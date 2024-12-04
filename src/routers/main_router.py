@@ -31,7 +31,7 @@ async def process_update_parent_deal(deal_id: int, related_object_id: int):
 
     # Извлекаем последний комментарий из сделки
     last_comment = deal_data["data"]["lastComment"]["content"]
-    last_comment = f"[KUBIT - последний комментарий из сделки №{deal_id}]\n{last_comment}"
+    last_comment = f"Kubit: Последний коммент из задачи спринта №{deal_id}\n{last_comment}"
 
     # Отправляем комментарий в родительскую сделку в Megaplan MP30224613
     parent_deal_id = str(related_object_id)
