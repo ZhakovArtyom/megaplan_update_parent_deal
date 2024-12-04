@@ -32,10 +32,9 @@ async def process_update_parent_deal(deal_id: int, related_object_id: int):
     # Извлекаем последний комментарий из сделки
     last_comment = deal_data["data"]["lastComment"]["content"]
     deal_number = deal_data["data"]["number"]
-    link_text = f"https://mp30224613.megaplan.ru/bp/28/card/{deal_id}"
-    link = f"<a href='{link_text}' target='_blank'>{link_text}</a>"
-    last_comment = f"Kubit: Последний коммент из задачи спринта №{deal_number}\n{last_comment}\n{link}"
-
+    link = f"https://mp30224613.megaplan.ru/bp/28/card/{deal_id}"
+    link_text = f"<a href='{link}' target='_blank'>{last_comment}</a>"
+    last_comment_edited = f"Kubit: Последний коммент из задачи спринта №{deal_number}\n{link_text}"
 
     # Отправляем комментарий в родительскую сделку в Megaplan MP30224613
     parent_deal_id = str(related_object_id)
@@ -44,7 +43,7 @@ async def process_update_parent_deal(deal_id: int, related_object_id: int):
         "contentType": "CommentCreateActionRequest",
         "comment": {
             "contentType": "Comment",
-            "content": last_comment,
+            "content": last_comment_edited,
             "subject": {
                 "contentType": "Deal",
                 "id": parent_deal_id
