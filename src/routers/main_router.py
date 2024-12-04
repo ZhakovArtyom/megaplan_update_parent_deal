@@ -10,14 +10,6 @@ from config import settings
 
 router = APIRouter()
 
-ENERGYENGINEERING_API_URL = settings.ENERGYENGINEERING_API_URL
-ENERGYENGINEERING_TOKEN = settings.ENERGYENGINEERING_TOKEN
-ENERGYENGINEERING_HEADER = {
-    "Authorization": f"Bearer {ENERGYENGINEERING_TOKEN}",
-    "Content-Type": "application/json"
-}
-
-# ==========================================================================================================
 MP30224613_TOKEN = settings.MP30224613_TOKEN
 MP30224613_API_URL = settings.MP30224613_API_URL
 MP30224613_HEADER = {
@@ -33,12 +25,13 @@ async def test_endpoint():
 
 async def process_update_parent_deal(deal_id: int, related_object_id: int):
     # Получаем данные сделки из Megaplan ENERGYENGINEERING
-    url = f"{ENERGYENGINEERING_API_URL}/api/v3/deal/{deal_id}"
-    response = requests.get(url, headers=ENERGYENGINEERING_HEADER)
+    url = f"{MP30224613_API_URL}/api/v3/deal/{deal_id}"
+    response = requests.get(url, headers=MP30224613_HEADER)
     deal_data = response.json()
 
     # Извлекаем последний комментарий из сделки
     last_comment = deal_data["data"]["lastComment"]["content"]
+    last_comment = f"[KUBIT - последний комментарий из сделки №{deal_id}]\n{last_comment}"
 
     # Отправляем комментарий в родительскую сделку в Megaplan MP30224613
     parent_deal_id = str(related_object_id)
@@ -60,6 +53,7 @@ async def process_update_parent_deal(deal_id: int, related_object_id: int):
     response = requests.post(url, headers=MP30224613_HEADER, json=body)
     logging.info(f"Комментарий отправлен в родительскую сделку {parent_deal_id}. Статус: {response.status_code}")
 
+
 @router.post("/update-parent-deal")
 async def unload_tasks(request: Request):
     webhook_data = await request.json()
@@ -70,7 +64,5 @@ async def unload_tasks(request: Request):
 
     asyncio.create_task(process_update_parent_deal(deal_id, related_object_id))
 
-    return JSONResponse(status_code=200, content={"message": "Задача обновления родительской сделки принята в обработку"})
-
-
-
+    return JSONResponse(status_code=200,
+                        content={"message": "Задача обновления родительской сделки принята в обработку"})
