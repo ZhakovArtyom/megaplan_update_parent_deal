@@ -1,5 +1,7 @@
+import asyncio
 import logging
 
+import requests
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 from starlette.requests import Request
@@ -8,10 +10,18 @@ from config import settings
 
 router = APIRouter()
 
-MEGAPLAN_API_URL = settings.MEGAPLAN_API_URL
-MEGAPLAN_API_KEY = settings.MEGAPLAN_API_KEY
-MEGAPLAN_HEADER = {
-    "Authorization": f"Bearer {MEGAPLAN_API_KEY}",
+ENERGYENGINEERING_API_URL = settings.ENERGYENGINEERING_API_URL
+ENERGYENGINEERING_TOKEN = settings.ENERGYENGINEERING_TOKEN
+ENERGYENGINEERING_HEADER = {
+    "Authorization": f"Bearer {ENERGYENGINEERING_TOKEN}",
+    "Content-Type": "application/json"
+}
+
+# ==========================================================================================================
+MP30224613_TOKEN = settings.MP30224613_TOKEN
+MP30224613_API_URL = settings.MP30224613_API_URL
+MP30224613_HEADER = {
+    "Authorization": f"Bearer {MP30224613_TOKEN}",
     "Content-Type": "application/json"
 }
 
@@ -21,12 +31,46 @@ async def test_endpoint():
     return JSONResponse(status_code=200, content={"message": "Test request successful!"})
 
 
+async def process_update_parent_deal(deal_id: int, related_object_id: int):
+    # Получаем данные сделки из Megaplan ENERGYENGINEERING
+    url = f"{ENERGYENGINEERING_API_URL}/api/v3/deal/{deal_id}"
+    response = requests.get(url, headers=ENERGYENGINEERING_HEADER)
+    deal_data = response.json()
+
+    # Извлекаем последний комментарий из сделки
+    last_comment = deal_data["data"]["lastComment"]["content"]
+
+    # Отправляем комментарий в родительскую сделку в Megaplan MP30224613
+    parent_deal_id = str(related_object_id)
+    url = f"{MP30224613_API_URL}/api/v3/deal/{parent_deal_id}/comments"
+    body = {
+        "contentType": "CommentCreateActionRequest",
+        "comment": {
+            "contentType": "Comment",
+            "content": last_comment,
+            "subject": {
+                "contentType": "Deal",
+                "id": parent_deal_id
+            }
+        },
+        "transports": [
+            {}
+        ]
+    }
+    response = requests.post(url, headers=MP30224613_HEADER, json=body)
+    logging.info(f"Комментарий отправлен в родительскую сделку {parent_deal_id}. Статус: {response.status_code}")
+
 @router.post("/update-parent-deal")
 async def unload_tasks(request: Request):
-    logging.info(f"Webhook_data: {await request.json()}")
+    webhook_data = await request.json()
+    logging.info(f"Webhook_{webhook_data}")
 
-    return JSONResponse(status_code=200, content={"message": "Test request successful!"})
+    deal_id = webhook_data["data"]["deal"]["Id"]
+    related_object_id = webhook_data["data"]["deal"]["RelatedObjects"][0]["Id"]
 
-    # # Создаем асинхронную задачу для обработки выгрузки
-    # asyncio.create_task(process_tasks_unloading(entity_type, entity_id))
-    # return JSONResponse(status_code=200, content={"message": "Задача выгрузки принята в обработку"})
+    asyncio.create_task(process_update_parent_deal(deal_id, related_object_id))
+
+    return JSONResponse(status_code=200, content={"message": "Задача обновления родительской сделки принята в обработку"})
+
+
+
